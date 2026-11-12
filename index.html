@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>مغامرة صائد الجواهر — لعبة تعليمية تفاعلية للمعلم والطلاب</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+      background: radial-gradient(circle at top, #1e1b4b 0%, #0f172a 55%, #020617 100%);
+      color: #f8fafc;
+      min-height: 100vh;
+      overflow-x: hidden;
+      user-select: none;
+    }
+    .glass {
+      background: rgba(15, 23, 42, 0.72);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+    }
+    .gold-glow {
+      box-shadow: 0 0 24px rgba(251, 191, 36, 0.25);
+    }
+    .dpad-btn {
+      transition: transform 0.08s ease, background-color 0.15s ease;
+    }
+    .dpad-btn:active {
+      transform: scale(0.92);
+    }
+    @keyframes floatSlow {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-4px); }
+    }
+    .float-anim { animation: floatSlow 2.4s ease-in-out infinite; }
+    canvas {
+      touch-action: none;
+      display: block;
+    }
+  </style>
+</head>
+<body class="p-2 sm:p-4">
+
+  <!-- Top Header & Teacher Control Bar -->
+  <header class="max-w-7xl mx-auto mb-3 glass rounded-2xl p-3 flex flex-wrap items-center justify-between gap-2">
+    <div class="flex items-center gap-2.5">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 flex items-center justify-center text-2xl shadow-lg">💎</div>
+      <div>
+        <h1 class="text-base sm:text-lg font-extrabold text-amber-300 leading-tight">مغامرة صائد الجواهر</h1>
+        <p class="text-xs text-slate-300">تحكم المعلم + لعب الطالب بالأسهم (حتى 5 لاعبين)</p>
+      </div>
+    </div>
+
+    <!-- Teacher Quick Controls -->
+    <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+      <button id="btnToggleControl" class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition flex items-center gap-1.5 shadow">
+        <span>🎮</span>
+        <span id="controlModeLabel">الذراع مع الطالب (الأسهم مفعلة)</span>
+      </button>
+
+      <button id="btnOpenTeacherPanel" class="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center gap-1.5">
+        <span>👨‍🏫</span>
+        <span>لوحة المعلم والأسئلة</span>
+      </button>
+
+      <button id="btnMute" class="px-2.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold bg-slate-700 hover:bg-slate-600 text-slate-100 transition" title="كتم/تشغيل الصوت">
+        🔊
+      </button>
+
+      <button id="btnResetAll" class="px-2.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold bg-rose-700/80 hover:bg-rose-600 text-white transition" title="إعادة البطولة">
+        🔄 جديد
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Workspace Grid -->
+  <main class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-3">
+
+    <!-- Right Column (in RTL: First): Game Stage & Canvas -->
+    <section class="lg:col-span-8 flex flex-col gap-3">
+
+      <!-- Active Player & Stage Banner -->
+      <div class="glass rounded-2xl p-3 flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-2.5">
+          <div id="activeAvatar" class="w-10 h-10 rounded-full flex items-center justify-center text-xl font-bold border-2 border-amber-400 bg-slate-800">🦁</div>
+          <div>
+            <div class="text-xs text-slate-400">الدور الآن على:</div>
+            <div class="flex items-center gap-2">
+              <span id="activePlayerName" class="text-base font-extrabold text-white">اللاعب 1</span>
+              <span id="activePlayerGems" class="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-400/30">💎 0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stage Progress Pills -->
+        <div class="flex items-center gap-1 sm:gap-1.5 flex-wrap">
+          <div id="pillStage1" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700">1. لغز (1💎)</div>
+          <div id="pillStage2" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700">2. سؤال (3💎)</div>
+          <div id="pillStage3" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700">3. متاهة الحراس (2💎)</div>
+          <div id="pillStage4" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700">4. سؤال النهاية (3💎)</div>
+        </div>
+      </div>
+
+      <!-- Game Viewport Card -->
+      <div class="glass rounded-2xl p-3 relative overflow-hidden gold-glow">
+        <!-- Stage Instruction Strip -->
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2.5 pb-2 border-b border-slate-700/60">
+          <div class="flex items-center gap-2">
+            <span id="stageTitle" class="text-sm sm:text-base font-extrabold text-emerald-300">المرحلة 1: لغز البوابة المسحورة</span>
+            <span id="stageHint" class="text-xs text-slate-300 hidden sm:inline">— حرّك الشخصية بالأسهم لفتح الأقفال والحصول على الجوهرة</span>
+          </div>
+          <div class="flex items-center gap-2 text-xs font-bold">
+            <span id="heartsDisplay" class="text-rose-400">❤️❤️❤️</span>
+            <span id="timerDisplay" class="px-2 py-0.5 rounded bg-slate-800 text-sky-300 font-mono">00:00</span>
+          </div>
+        </div>
+
+        <!-- Canvas Container -->
+        <div id="canvasWrapper" class="relative w-full rounded-xl overflow-hidden bg-slate-950 border border-slate-800" style="height: 390px;">
+          <canvas id="gameCanvas"></canvas>
+
+          <!-- Overlay: Welcome / Setup -->
+          <div id="overlaySetup" class="absolute inset-0 bg-slate-950/92 backdrop-blur-md flex flex-col items-center justify-center p-4 text-center z-20">
+            <div class="text-4xl mb-2 float-anim">💎⚔️🏰</div>
+            <h2 class="text-xl sm:text-2xl font-black text-amber-300 mb-1">مرحباً بكم في مغامرة صائد الجواهر</h2>
+            <p class="text-xs sm:text-sm text-slate-300 max-w-md mb-4">
+              اختر عدد الطلاب (من 1 إلى 5)، واكتب أسماءهم، ثم ابدأ المغامرة! يمكن للمعلم التحكم وإعطاء الذراع للطالب للتحرك بالأسهم ⬆️⬇️⬅️➡️.
+            </p>
+
+            <div class="flex items-center gap-2 mb-3">
+              <span class="text-xs font-bold text-slate-300">عدد اللاعبين:</span>
+              <div id="playerCountBtns" class="flex gap-1.5">
+                <button data-count="1" class="pc-btn w-8 h-8 rounded-lg font-bold text-sm bg-slate-800 hover:bg-amber-500 hover:text-slate-950 transition">1</button>
+                <button data-count="2" class="pc-btn w-8 h-8 rounded-lg font-bold text-sm bg-amber-500 text-slate-950 transition">2</button>
+                <button data-count="3" class="pc-btn w-8 h-8 rounded-lg font-bold text-sm bg-slate-800 hover:bg-amber-500 hover:text-slate-950 transition">3</button>
+                <button data-count="4" class="pc-btn w-8 h-8 rounded-lg font-bold text-sm bg-slate-800 hover:bg-amber-500 hover:text-slate-950 transition">4</button>
+                <button data-count="5" class="pc-btn w-8 h-8 rounded-lg font-bold text-sm bg-slate-800 hover:bg-amber-500 hover:text-slate-950 transition">5</button>
+              </div>
+            </div>
+
+            <div id="setupPlayerInputs" class="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-md mb-4"></div>
+
+            <button id="btnStartTournament" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black text-sm sm:text-base shadow-lg transition transform hover:scale-105">
+              🚀 ابدأ المغامرة الآن
+            </button>
+          </div>
+
+          <!-- Overlay: Question Stage (Stage 2 & Stage 4) -->
+          <div id="overlayQuestion" class="hidden absolute inset-0 bg-slate-950/94 backdrop-blur-md flex flex-col items-center justify-center p-4 z-20 overflow-y-auto">
+            <div class="max-w-lg w-full bg-slate-900/90 border border-amber-400/30 rounded-2xl p-4 shadow-2xl">
+              <div class="flex items-center justify-between mb-2">
+                <span id="qBadge" class="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-amber-500/20 text-amber-300 border border-amber-400/40">سؤال بـ 3 جواهر 💎💎💎</span>
+                <span id="qPlayerTag" class="text-xs text-slate-300 font-bold">للاعب: أحمد</span>
+              </div>
+
+              <h3 id="qText" class="text-base sm:text-lg font-extrabold text-white mb-3 leading-relaxed">ما هو السؤال؟</h3>
+
+              <div id="qOptions" class="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3"></div>
+
+              <div id="qFeedback" class="hidden text-center text-sm font-bold py-2 px-3 rounded-xl mb-3"></div>
+
+              <!-- Teacher Live Override Buttons -->
+              <div class="pt-2.5 border-t border-slate-700/70 flex flex-wrap items-center justify-between gap-2">
+                <span class="text-[11px] text-slate-400">تحكم المعلم المباشر (للأسئلة الشفهية):</span>
+                <div class="flex gap-1.5">
+                  <button id="btnTeacherCorrect" class="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition">✅ إجابة صحيحة (+3💎)</button>
+                  <button id="btnTeacherWrong" class="px-3 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition">❌ إجابة خاطئة</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Overlay: Stage / Turn Transition -->
+          <div id="overlayTransition" class="hidden absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-4 text-center z-20">
+            <div id="transIcon" class="text-5xl mb-2">🎉</div>
+            <h3 id="transTitle" class="text-xl font-black text-amber-300 mb-1">أحسنت!</h3>
+            <p id="transDesc" class="text-sm text-slate-200 max-w-md mb-4">تم جمع الجواهر بنجاح.</p>
+            <button id="btnTransNext" class="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-sm shadow-lg transition">
+              المتابعة للمرحلة التالية ⬅️
+            </button>
+          </div>
+
+          <!-- Overlay: Final Podium / Leaderboard -->
+          <div id="overlayPodium" class="hidden absolute inset-0 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-4 text-center z-20 overflow-y-auto">
+            <div class="text-4xl mb-1">🏆👑🏆</div>
+            <h2 class="text-xl sm:text-2xl font-black text-amber-300 mb-1">النتائج النهائية والمراكز</h2>
+            <p class="text-xs text-slate-300 mb-3">ترتيب الأبطال حسب عدد الجواهر وسرعة الإنجاز</p>
+            <div id="podiumList" class="w-full max-w-md flex flex-col gap-2 mb-4"></div>
+            <button id="btnPlayAgain" class="px-5 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-sm transition">
+              🔄 جولة جديدة بنفس اللاعبين
+            </button>
+          </div>
+
+          <!-- Overlay: Teacher Paused Control -->
+          <div id="overlayPaused" class="hidden absolute inset-0 bg-slate-950/75 backdrop-blur-sm flex flex-col items-center justify-center p-4 text-center z-10">
+            <div class="text-4xl mb-2">⏸️</div>
+            <h3 class="text-lg font-black text-amber-300">اللعبة متوقفة مؤقتاً بيد المعلم</h3>
+            <p class="text-xs text-slate-300 mt-1">اضغط على "الذراع مع الطالب" لإعادة تفعيل الحركة بالأسهم</p>
+          </div>
+        </div>
+
+        <!-- Bottom Controls: On-screen D-Pad + Teacher Stage Shortcuts -->
+        <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <!-- D-Pad for Touch / Mouse / Tablet -->
+          <div class="flex items-center gap-3">
+            <div class="grid grid-cols-3 gap-1 w-28">
+              <div></div>
+              <button data-dir="up" class="dpad-btn h-8 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 flex items-center justify-center text-sm font-bold">⬆️</button>
+              <div></div>
+              <button data-dir="right" class="dpad-btn h-8 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 flex items-center justify-center text-sm font-bold">➡️</button>
+              <button data-dir="down" class="dpad-btn h-8 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 flex items-center justify-center text-sm font-bold">⬇️</button>
+              <button data-dir="left" class="dpad-btn h-8 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 flex items-center justify-center text-sm font-bold">⬅️</button>
+            </div>
+            <div class="text-xs text-slate-400 leading-snug">
+              <div>استخدم <span class="text-amber-300 font-bold">الأسهم</span> في لوحة المفاتيح</div>
+              <div>أو أزرار الاتجاهات للتحرك</div>
+            </div>
+          </div>
+
+          <!-- Teacher Quick Actions -->
+          <div class="flex flex-wrap items-center gap-1.5">
+            <button id="btnGiveBonusGem" class="px-2.5 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 text-amber-300 text-xs font-bold transition">+1 جوهرة مكافأة</button>
+            <button id="btnSkipStage" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 text-xs font-bold transition">تخطي المرحلة ⏭️</button>
+            <button id="btnNextPlayer" class="px-2.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold transition">تبديل اللاعب 🔄</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Left Column (in RTL: Second): Live Leaderboard & Player Switcher -->
+    <aside class="lg:col-span-4 flex flex-col gap-3">
+      <!-- Live Leaderboard -->
+      <div class="glass rounded-2xl p-3.5">
+        <div class="flex items-center justify-between mb-2.5">
+          <h2 class="text-sm sm:text-base font-extrabold text-amber-300 flex items-center gap-1.5">
+            <span>🏆</span>
+            <span>لوحة الصدارة والمراكز</span>
+          </h2>
+          <span class="text-[11px] text-slate-400">اضغط على لاعب لإعطائه الذراع</span>
+        </div>
+
+        <div id="leaderboardList" class="flex flex-col gap-2"></div>
+      </div>
+
+      <!-- Game Rules Summary Card -->
+      <div class="glass rounded-2xl p-3.5 text-xs text-slate-300 space-y-1.5">
+        <h3 class="text-sm font-extrabold text-emerald-300 mb-1">🗺️ مسار كل لاعب (9 جواهر إجمالاً)</h3>
+        <div class="flex items-center justify-between bg-slate-900/60 px-2.5 py-1.5 rounded-lg">
+          <span>1️⃣ لغز الأقفال السحرية</span>
+          <span class="font-bold text-amber-300">1 💎</span>
+        </div>
+        <div class="flex items-center justify-between bg-slate-900/60 px-2.5 py-1.5 rounded-lg">
+          <span>2️⃣ سؤال التحدي الأول</span>
+          <span class="font-bold text-amber-300">3 💎</span>
+        </div>
+        <div class="flex items-center justify-between bg-slate-900/60 px-2.5 py-1.5 rounded-lg">
+          <span>3️⃣ متاهة الحراس والوحوش</span>
+          <span class="font-bold text-amber-300">2 💎</span>
+        </div>
+        <div class="flex items-center justify-between bg-slate-900/60 px-2.5 py-1.5 rounded-lg">
+          <span>4️⃣ سؤال التحدي النهائي</span>
+          <span class="font-bold text-amber-300">3 💎</span>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Teacher Modal: Edit Players & Custom Question Bank -->
+  <div id="teacherModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-3">
+    <div class="glass rounded-2xl max-w-xl w-full p-4 sm:p-5 max-h-[90vh] overflow-y-auto border border-indigo-400/30">
+      <div class="flex items-center justify-between mb-3 pb-2 border-b border-slate-700">
+        <h2 class="text-lg font-black text-indigo-300">👨‍🏫 لوحة تحكم المعلم</h2>
+        <button id="btnCloseTeacherModal" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold">✕</button>
+      </div>
+
+      <!-- Custom Question Adder -->
+      <div class="mb-4">
+        <h3 class="text-sm font-extrabold text-amber-300 mb-2">إضافة سؤال مخصص لبنك الأسئلة:</h3>
+        <div class="space-y-2">
+          <input id="newQText" type="text" placeholder="اكتب نص السؤال هنا..." class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-sm text-white focus:outline-none focus:border-amber-400" />
+          <div class="grid grid-cols-2 gap-2">
+            <input id="newQOpt0" type="text" placeholder="الخيار الأول (الصحيح)" class="px-3 py-1.5 rounded-xl bg-slate-900 border border-emerald-600/50 text-xs text-white" />
+            <input id="newQOpt1" type="text" placeholder="الخيار الثاني" class="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white" />
+            <input id="newQOpt2" type="text" placeholder="الخيار الثالث" class="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white" />
+            <input id="newQOpt3" type="text" placeholder="الخيار الرابع" class="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-xs text-white" />
+          </div>
+          <button id="btnAddCustomQ" class="w-full py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition">➕ إضافة السؤال إلى البنك</button>
+          <p id="customQMsg" class="text-xs text-emerald-400 hidden">تمت إضافة السؤال بنجاح!</p>
+        </div>
+      </div>
+
+      <!-- Question Bank List -->
+      <div>
+        <h3 class="text-sm font-extrabold text-slate-200 mb-2">الأسئلة المتاحة حالياً (<span id="qBankCount">0</span>):</h3>
+        <div id="qBankList" class="space-y-1.5 max-h-44 overflow-y-auto pr-1 text-xs"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="hidden fixed bottom-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-xl bg-slate-900 border border-amber-400/50 text-amber-200 text-xs sm:text-sm font-bold shadow-2xl z-50"></div>
+
+  <script>
+    // =========================================================
+    // 1. Web Audio Synthesizer (Zero external files)
+    // =========================================================
+    const Sound = (() => {
+      let ctx = null;
+      let muted = false;
+
+      function ensureCtx() {
+        if (!ctx) {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) ctx = new AudioCtx();
+        }
+        if (ctx && ctx.state === 'suspended') ctx.resume();
+      }
+
+      function playTone(freq, duration = 0.12, type = 'sine', vol = 0.15, delay = 0) {
+        if (muted) return;
+        ensureCtx();
+        if (!ctx) return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+        gain.gain.setValueAtTime(vol, ctx.currentTime + delay);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + delay);
+        osc.stop(ctx.currentTime + delay + duration);
+      }
+
+      return {
+        toggleMute() { muted = !muted; return muted; },
+        isMuted() { return muted; },
+        step() { playTone(260, 0.05, 'triangle', 0.06); },
+        switchOn() { playTone(523, 0.1, 'sine', 0.12); playTone(659, 0.12, 'sine', 0.12, 0.07); },
+        gem() { playTone(784, 0.12, 'sine', 0.16); playTone(1046, 0.2, 'triangle', 0.16, 0.08); },
+        hit() { playTone(180, 0.22, 'sawtooth', 0.14); playTone(120, 0.25, 'sawtooth', 0.12, 0.1); },
+        win() {
+          [523, 659, 784, 1046].forEach((f, i) => playTone(f, 0.18, 'triangle', 0.16, i * 0.09));
+        },
+        wrong() { playTone(220, 0.2, 'sawtooth', 0.12); playTone(170, 0.25, 'sawtooth', 0.12, 0.12); }
+      };
+    })();
+
+    // =========================================================
+    // 2. Question Bank (Built-in + Custom Teacher Questions)
+    // =========================================================
+    const defaultQuestions = [
+      { q: 'كم عدد أركان الإسلام؟', opts: ['5 أركان', '4 أركان', '6 أركان', '3 أركان'], ans: 0 },
+      { q: 'كم عدد الصلوات المفروضة في اليوم والليلة؟', opts: ['5 صلوات', '3 صلوات', '4 صلوات', '7 صلوات'], ans: 0 },
+      { q: 'ما اسم نبينا وخاتم الأنبياء والمرسلين؟', opts: ['محمد ﷺ', 'إبراهيم عليه السلام', 'موسى عليه السلام', 'عيسى عليه السلام'], ans: 0 },
+      { q: 'ما هي أول سورة في القرآن الكريم؟', opts: ['سورة الفاتحة', 'سورة البقرة', 'سورة الإخلاص', 'سورة الناس'], ans: 0 },
+      { q: 'في أي شهر هجري يصوم المسلمون؟', opts: ['شهر رمضان', 'شهر شوال', 'شهر رجب', 'شهر محرم'], ans: 0 },
+      { q: 'ماذا نقول قبل أن نبدأ في الأكل أو الشرب؟', opts: ['بسم الله', 'الحمد لله', 'سبحان الله', 'أستغفر الله'], ans: 0 },
+      { q: 'ماذا نقول بعد أن ننتهي من الأكل؟', opts: ['الحمد لله', 'بسم الله', 'ما شاء الله', 'الله أكبر'], ans: 0 },
+      { q: 'ما اسم المَلَك الذي كان ينزل بالوحي على الأنبياء؟', opts: ['جبريل عليه السلام', 'ميكائيل عليه السلام', 'إسرافيل عليه السلام', 'مالك عليه السلام'], ans: 0 },
+      { q: 'إلى أي جهة يتجه المسلمون في صلاتهم؟', opts: ['الكعبة المشرفة', 'المسجد الأقصى', 'المسجد النبوي', 'جبل عرفات'], ans: 0 },
+      { q: 'كم عدد أركان الإيمان؟', opts: ['6 أركان', '5 أركان', '4 أركان', '7 أركان'], ans: 0 },
+      { q: 'ما هي أطول سورة في القرآن الكريم؟', opts: ['سورة البقرة', 'سورة آل عمران', 'سورة الكهف', 'سورة يس'], ans: 0 },
+      { q: 'ما اسم أم المؤمنين وأول زوجة للنبي محمد ﷺ؟', opts: ['خديجة بنت خويلد', 'عائشة بنت أبي بكر', 'حفصة بنت عمر', 'فاطمة الزهراء'], ans: 0 },
+      { q: 'ما هو أول ركن من أركان الإسلام؟', opts: ['الشهادتان', 'إقام الصلاة', 'إيتاء الزكاة', 'صوم رمضان'], ans: 0 },
+      { q: 'ما اسم المدينة التي هاجر إليها النبي ﷺ؟', opts: ['المدينة المنورة', 'الطائف', 'القدس', 'تبوك'], ans: 0 },
+      { q: 'ما هي السورة التي تُسمى قلب القرآن أو تعدل ثلث القرآن؟ (تعدل ثلث القرآن)', opts: ['سورة الإخلاص', 'سورة الفلق', 'سورة الكوثر', 'سورة العصر'], ans: 0 },
+      { q: 'ما اسم النبي الذي ابتلعه الحوت ثم نجّاه الله؟', opts: ['يونس عليه السلام', 'نوح عليه السلام', 'يوسف عليه السلام', 'داود عليه السلام'], ans: 0 }
+    ];
+
+    const avatars = ['🦁', '🐯', '🦊', '🐼', '🦅'];
+    const playerColors = ['#f59e0b', '#10b981', '#38bdf8', '#ec4899', '#a855f7'];
+
+    // =========================================================
+    // 3. Game State
+    // =========================================================
+    const state = {
+      screen: 'setup', // 'setup' | 'playing' | 'question' | 'transition' | 'podium'
+      teacherPaused: false,
+      playerCount: 2,
+      players: [],
+      activePlayerIdx: 0,
+      questions: [...defaultQuestions],
+      qCursor: 0,
+      timerSec: 0,
+      timerInterval: null,
+      animFrame: null,
+      lastTime: 0,
+      // Stage 1: Puzzle (Grid 11x8) -> 3 rune switches + 1 locked gate + 1 gem
+      puzzle: null,
+      // Stage 3: Maze (Grid 13x9) -> 2 gems + patrolling monsters/guards + exit portal
+      maze: null
+    };
+
+    // =========================================================
+    // 4. DOM References
+    // =========================================================
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const canvasWrapper = document.getElementById('canvasWrapper');
+
+    const overlaySetup = document.getElementById('overlaySetup');
+    const overlayQuestion = document.getElementById('overlayQuestion');
+    const overlayTransition = document.getElementById('overlayTransition');
+    const overlayPodium = document.getElementById('overlayPodium');
+    const overlayPaused = document.getElementById('overlayPaused');
+
+    const setupPlayerInputs = document.getElementById('setupPlayerInputs');
+    const leaderboardList = document.getElementById('leaderboardList');
+
+    // =========================================================
+    // 5. Stage Builders (Stage 1 Puzzle & Stage 3 Maze)
+    // =========================================================
+    function initStage1Puzzle() {
+      // 11 cols x 8 rows
+      // 0 = floor, 1 = wall, 2 = rune switch, 3 = gate (opens when all switches lit), 4 = gem
+      const grid = [
+        [1,1,1,1,1,1,1,1,1,1,1],
+        [1,0,0,0,1,0,0,0,0,4,1],
+        [1,0,1,0,1,0,1,1,3,1,1],
+        [1,0,1,0,0,0,0,1,0,0,1],
+        [1,0,0,0,1,1,0,0,0,0,1],
+        [1,1,1,0,0,0,0,1,1,0,1],
+        [1,0,0,0,1,0,0,0,0,0,1],
+        [1,1,1,1,1,1,1,1,1,1,1]
+      ];
+      const switches = [
+        { x: 3, y: 1, lit: false },
+        { x: 1, y: 6, lit: false },
+        { x: 9, y: 6, lit: false }
+      ];
+      state.puzzle = {
+        cols: 11,
+        rows: 8,
+        grid,
+        switches,
+        gateOpen: false,
+        player: { x: 1, y: 1 },
+        gemCollected: false
+      };
+    }
+
+    function initStage3Maze() {
+      // 13 cols x 9 rows
+      // 0 = path, 1 = wall
+      const grid = [
+        [1,1,1,1,1,1,1,1,1,1,1,1,1],
+        [1,0,0,0,1,0,0,0,1,0,0,0,1],
+        [1,0,1,0,1,0,1,0,1,0,1,0,1],
+        [1,0,1,0,0,0,1,0,0,0,1,0,1],
+        [1,0,1,1,1,0,1,1,1,0,1,0,1],
+        [1,0,0,0,0,0,0,0,0,0,0,0,1],
+        [1,0,1,1,1,0,1,0,1,1,1,0,1],
+        [1,0,0,0,1,0,0,0,0,0,0,0,1],
+        [1,1,1,1,1,1,1,1,1,1,1,1,1]
+      ];
+      state.maze = {
+        cols: 13,
+        rows: 9,
+        grid,
+        player: { x: 1, y: 1 },
+        hearts: 3,
+        invulnTimer: 0,
+        gems: [
+          { x: 5, y: 1, collected: false },
+          { x: 11, y: 7, collected: false }
+        ],
+        exit: { x: 11, y: 1 },
+        guards: [
+          { x: 5, y: 3, dirX: 0, dirY: 1, minY: 1, maxY: 5, speed: 2.3, progress: 0 },
+          { x: 3, y: 5, dirX: 1, dirY: 0, minX: 1, maxX: 9, speed: 2.7, progress: 0 },
+          { x: 11, y: 4, dirX: 0, dirY: 1, minY: 2, maxY: 7, speed: 2.4, progress: 0 }
+        ]
+      };
+    }
+
+    // =========================================================
+    // 6. Setup & Player Management (Up to 5 Players)
+    // =========================================================
+    function renderSetupInputs() {
+      setupPlayerInputs.innerHTML = '';
+      for (let i = 0; i < state.playerCount; i++) {
+        const div = document.createElement('div');
+        div.className = 'flex items-center gap-2 bg-slate-900/90 border border-slate-700 rounded-xl px-2.5 py-1.5';
+        div.innerHTML = `
+          <span class="text-lg">${avatars[i]}</span>
+          <input type="text" data-pidx="${i}" value="الطالب ${i + 1}" maxlength="18"
+            class="setup-name-input w-full bg-transparent text-xs sm:text-sm font-bold text-white focus:outline-none" />
+        `;
+        setupPlayerInputs.appendChild(div);
+      }
+      document.querySelectorAll('.pc-btn').forEach(btn => {
+        const c = Number(btn.dataset.count);
+        if (c === state.playerCount) {
+          btn.className = 'pc-btn w-8 h-8 rounded-lg font-bold text-sm bg-amber-500 text-slate-950 transition';
+        } else {
+          btn.className = 'pc-btn w-8 h-8 rounded-lg font-bold text-sm bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-white transition';
+        }
+      });
+    }
+
+    function startTournament(keepPlayers = false) {
+      if (!keepPlayers) {
+        const inputs = document.querySelectorAll('.setup-name-input');
+        state.players = Array.from(inputs).map((inp, idx) => ({
+          id: idx,
+          name: inp.value.trim() || `الطالب ${idx + 1}`,
+          avatar: avatars[idx],
+          color: playerColors[idx],
+          gems: 0,
+          stage: 1, // 1..4, 5 = finished
+          timeSec: 0,
+          finished: false
+        }));
+      } else {
+        state.players.forEach(p => {
+          p.gems = 0;
+          p.stage = 1;
+          p.timeSec = 0;
+          p.finished = false;
+        });
+      }
+      state.activePlayerIdx = 0;
+      state.teacherPaused = false;
+      startActivePlayerStage();
+      startTimer();
+      renderLeaderboard();
+      showToast('انطلقت البطولة! الذراع الآن مع ' + state.players[0].name);
+    }
+
+    function startActivePlayerStage() {
+      const p = state.players[state.activePlayerIdx];
+      if (!p) return;
+
+      hideAllOverlays();
+      if (p.finished || p.stage > 4) {
+        // Find next unfinished player or show podium
+        const nextUnfinished = state.players.findIndex(pl => !pl.finished);
+        if (nextUnfinished === -1) {
+          showPodium();
+          return;
+        }
+        state.activePlayerIdx = nextUnfinished;
+      }
+
+      const curr = state.players[state.activePlayerIdx];
+      updateTopBanner();
+      renderLeaderboard();
+
+      if (curr.stage === 1) {
+        state.screen = 'playing';
+        initStage1Puzzle();
+      } else if (curr.stage === 2) {
+        state.screen = 'question';
+        openQuestionOverlay(3, 'سؤال التحدي الأول (3 جواهر 💎💎💎)');
+      } else if (curr.stage === 3) {
+        state.screen = 'playing';
+        initStage3Maze();
+      } else if (curr.stage === 4) {
+        state.screen = 'question';
+        openQuestionOverlay(3, 'سؤال التحدي النهائي (3 جواهر 💎💎💎)');
+      }
+      updateTopBanner();
+    }
+
+    function hideAllOverlays() {
+      overlaySetup.classList.add('hidden');
+      overlayQuestion.classList.add('hidden');
+      overlayTransition.classList.add('hidden');
+      overlayPodium.classList.add('hidden');
+    }
+
+    function updateTopBanner() {
+      const p = state.players[state.activePlayerIdx];
+      if (!p) return;
+      document.getElementById('activeAvatar').textContent = p.avatar;
+      document.getElementById('activeAvatar').style.borderColor = p.color;
+      document.getElementById('activePlayerName').textContent = p.name;
+      document.getElementById('activePlayerGems').textContent = `💎 ${p.gems}`;
+
+      const titles = {
+        1: ['المرحلة 1: لغز الأقفال السحرية (1 💎)', '— قف على المفاتيح الثلاثة 🟨 لفتح البوابة والحصول على الجوهرة'],
+        2: ['المرحلة 2: سؤال التحدي الأول (3 💎)', '— أجب عن السؤال لتحصل على 3 جواهر'],
+        3: ['المرحلة 3: متاهة الحراس والوحوش (2 💎)', '— اجمع الجوهرتين وتجنب الوحوش ثم اتجه لبوابة الخروج 🚪'],
+        4: ['المرحلة 4: سؤال التحدي النهائي (3 💎)', '— السؤال الأخير بـ 3 جواهر!']
+      };
+      const [t, h] = titles[p.stage] || ['اكتملت المراحل!', ''];
+      document.getElementById('stageTitle').textContent = t;
+      document.getElementById('stageHint').textContent = h;
+
+      // Hearts
+      const heartsEl = document.getElementById('heartsDisplay');
+      if (p.stage === 3 && state.maze) {
+        heartsEl.textContent = '❤️'.repeat(Math.max(0, state.maze.hearts)) + '🖤'.repeat(Math.max(0, 3 - state.maze.hearts));
+      } else {
+        heartsEl.textContent = '❤️❤️❤️';
+      }
+
+      // Pills
+      for (let s = 1; s <= 4; s++) {
+        const pill = document.getElementById(`pillStage${s}`);
+        if (s < p.stage) {
+          pill.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-600/30 text-emerald-300 border border-emerald-500/40';
+        } else if (s === p.stage) {
+          pill.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500 text-slate-950 border border-amber-300 shadow';
+        } else {
+          pill.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-800 text-slate-400 border border-slate-700';
+        }
+      }
+
+      // Paused overlay
+      if (state.teacherPaused && state.screen === 'playing') {
+        overlayPaused.classList.remove('hidden');
+      } else {
+        overlayPaused.classList.add('hidden');
+      }
+    }
+
+    // =========================================================
+    // 7. Timer & Leaderboard
+    // =========================================================
+    function startTimer() {
+      if (state.timerInterval) clearInterval(state.timerInterval);
+      state.timerInterval = setInterval(() => {
+        if (state.screen === 'playing' && !state.teacherPaused) {
+          const p = state.players[state.activePlayerIdx];
+          if (p && !p.finished) {
+            p.timeSec++;
+            const mins = String(Math.floor(p.timeSec / 60)).padStart(2, '0');
+            const secs = String(p.timeSec % 60).padStart(2, '0');
+            document.getElementById('timerDisplay').textContent = `${mins}:${secs}`;
+          }
+        }
+      }, 1000);
+    }
+
+    function getSortedPlayers() {
+      return [...state.players].sort((a, b) => {
+        if (b.gems !== a.gems) return b.gems - a.gems;
+        return a.timeSec - b.timeSec;
+      });
+    }
+
+    function renderLeaderboard() {
+      leaderboardList.innerHTML = '';
+      if (state.players.length === 0) return;
+
+      const sorted = getSortedPlayers();
+      const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
+
+      sorted.forEach((p, rank) => {
+        const isActive = p.id === state.players[state.activePlayerIdx]?.id;
+        const card = document.createElement('button');
+        card.className = `w-full text-right p-2.5 rounded-xl border transition flex items-center justify-between gap-2 ${
+          isActive
+            ? 'bg-amber-500/15 border-amber-400 shadow-md'
+            : 'bg-slate-900/70 border-slate-700/70 hover:border-slate-500'
+        }`;
+        card.onclick = () => {
+          if (state.screen === 'setup') return;
+          const idx = state.players.findIndex(pl => pl.id === p.id);
+          if (idx !== -1) {
+            state.activePlayerIdx = idx;
+            startActivePlayerStage();
+            showToast(`تم تسليم الذراع إلى ${p.name}`);
+          }
+        };
+
+        const stageLabel = p.finished ? 'أنهى المغامرة ✅' : `المرحلة ${p.stage} من 4`;
+        card.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="text-lg">${medals[rank] || ''}</span>
+            <span class="text-xl">${p.avatar}</span>
+            <div>
+              <div class="text-xs sm:text-sm font-extrabold text-white flex items-center gap-1.5">
+                <span>${p.name}</span>
+                ${isActive ? '<span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">يلعب الآن</span>' : ''}
+              </div>
+              <div class="text-[11px] text-slate-400">${stageLabel} • ${p.timeSec}ث</div>
+            </div>
+          </div>
+          <div class="px-2.5 py-1 rounded-lg bg-slate-800 text-amber-300 font-black text-xs sm:text-sm border border-amber-500/20">
+            💎 ${p.gems}
+          </div>
+        `;
+        leaderboardList.appendChild(card);
+      });
+    }
+
+    // =========================================================
+    // 8. Question Overlay Logic (Stage 2 & Stage 4)
+    // =========================================================
+    let currentQuestionReward = 3;
+    let questionAnswered = false;
+
+    function openQuestionOverlay(rewardGems, badgeText) {
+      currentQuestionReward = rewardGems;
+      questionAnswered = false;
+      const p = state.players[state.activePlayerIdx];
+
+      const qObj = state.questions[state.qCursor % state.questions.length];
+      state.qCursor++;
+
+      // Shuffle options while tracking correct index
+      const indexed = qObj.opts.map((txt, i) => ({ txt, isCorrect: i === qObj.ans }));
+      for (let i = indexed.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [indexed[i], indexed[j]] = [indexed[j], indexed[i]];
+      }
+
+      document.getElementById('qBadge').textContent = badgeText;
+      document.getElementById('qPlayerTag').textContent = `اللاعب: ${p.name} ${p.avatar}`;
+      document.getElementById('qText').textContent = qObj.q;
+
+      const feedback = document.getElementById('qFeedback');
+      feedback.classList.add('hidden');
+
+      const optsContainer = document.getElementById('qOptions');
+      optsContainer.innerHTML = '';
+
+      indexed.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'p-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-right text-sm font-bold text-white transition flex items-center gap-2';
+        btn.innerHTML = `<span class="w-6 h-6 rounded-md bg-slate-700 text-amber-300 flex items-center justify-center text-xs">${idx + 1}</span><span>${opt.txt}</span>`;
+        btn.onclick = () => handleQuestionAnswer(opt.isCorrect, btn);
+        optsContainer.appendChild(btn);
+      });
+
+      overlayQuestion.classList.remove('hidden');
+    }
+
+    function handleQuestionAnswer(isCorrect, clickedBtn = null) {
+      if (questionAnswered) return;
+      questionAnswered = true;
+      const p = state.players[state.activePlayerIdx];
+      const feedback = document.getElementById('qFeedback');
+      feedback.classList.remove('hidden');
+
+      if (isCorrect) {
+        Sound.win();
+        p.gems += currentQuestionReward;
+        if (clickedBtn) {
+          clickedBtn.className = 'p-3 rounded-xl bg-emerald-600 border border-emerald-400 text-right text-sm font-bold text-white flex items-center gap-2';
+        }
+        feedback.className = 'text-center text-sm font-bold py-2 px-3 rounded-xl mb-3 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+        feedback.textContent = `🎉 إجابة رائعة! حصلت على ${currentQuestionReward} جواهر 💎`;
+      } else {
+        Sound.wrong();
+        if (clickedBtn) {
+          clickedBtn.className = 'p-3 rounded-xl bg-rose-600 border border-rose-400 text-right text-sm font-bold text-white flex items-center gap-2';
+        }
+        feedback.className = 'text-center text-sm font-bold py-2 px-3 rounded-xl mb-3 bg-rose-500/20 text-rose-300 border border-rose-500/40';
+        feedback.textContent = 'حظاً أوفر في المرحلة القادمة! لم تحصل على جواهر هذا السؤال.';
+      }
+
+      renderLeaderboard();
+      updateTopBanner();
+
+      setTimeout(() => {
+        advancePlayerStage(isCorrect ? `أحسنت يا ${p.name}! +${currentQuestionReward} جواهر` : `انتهى السؤال، هيا نكمل المغامرة يا ${p.name}!`);
+      }, 1300);
+    }
+
+    function advancePlayerStage(message) {
+      const p = state.players[state.activePlayerIdx];
+      if (!p) return;
+      p.stage++;
+      if (p.stage > 4) {
+        p.finished = true;
+      }
+      renderLeaderboard();
+
+      const nextUnfinished = state.players.findIndex(pl => !pl.finished);
+      if (p.finished && nextUnfinished === -1) {
+        showPodium();
+        return;
+      }
+
+      state.screen = 'transition';
+      hideAllOverlays();
+      document.getElementById('transIcon').textContent = p.finished ? '🏁' : '💎';
+      document.getElementById('transTitle').textContent = p.finished ? `أتمّ ${p.name} جميع المراحل!` : 'انتهت المرحلة!';
+      document.getElementById('transDesc').textContent = message;
+
+      const nextBtn = document.getElementById('btnTransNext');
+      if (p.finished) {
+        nextBtn.textContent = `تسليم الذراع للاعب التالي (${state.players[nextUnfinished].name}) ⬅️`;
+      } else {
+        nextBtn.textContent = 'الانتقال للمرحلة التالية ⬅️';
+      }
+      overlayTransition.classList.remove('hidden');
+    }
+
+    function showPodium() {
+      state.screen = 'podium';
+      hideAllOverlays();
+      Sound.win();
+      const sorted = getSortedPlayers();
+      const medals = ['🥇 المركز الأول', '🥈 المركز الثاني', '🥉 المركز الثالث', '4️⃣ المركز الرابع', '5️⃣ المركز الخامس'];
+      const list = document.getElementById('podiumList');
+      list.innerHTML = '';
+
+      sorted.forEach((p, i) => {
+        const row = document.createElement('div');
+        row.className = `flex items-center justify-between p-3 rounded-xl border ${
+          i === 0 ? 'bg-amber-500/20 border-amber-400' : 'bg-slate-900/80 border-slate-700'
+        }`;
+        row.innerHTML = `
+          <div class="flex items-center gap-2.5">
+            <span class="text-sm font-black ${i === 0 ? 'text-amber-300' : 'text-slate-300'}">${medals[i]}</span>
+            <span class="text-xl">${p.avatar}</span>
+            <span class="font-bold text-white text-sm">${p.name}</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="text-xs text-slate-400">${p.timeSec}ث</span>
+            <span class="px-2.5 py-1 rounded-lg bg-slate-800 text-amber-300 font-black text-sm">💎 ${p.gems}</span>
+          </div>
+        `;
+        list.appendChild(row);
+      });
+      overlayPodium.classList.remove('hidden');
+    }
+
+    // =========================================================
+    // 9. Movement Handling (Arrow Keys + WASD + D-Pad)
+    // =========================================================
+    function movePlayer(dx, dy) {
+      if (state.screen !== 'playing' || state.teacherPaused) return;
+      const p = state.players[state.activePlayerIdx];
+      if (!p) return;
+
+      if (p.stage === 1 && state.puzzle) {
+        const pz = state.puzzle;
+        const nx = pz.player.x + dx;
+        const ny = pz.player.y + dy;
+        if (nx < 0 || ny < 0 || nx >= pz.cols || ny >= pz.rows) return;
+        const cell = pz.grid[ny][nx];
+        if (cell === 1) return; // wall
+        if (cell === 3 && !pz.gateOpen) {
+          showToast('🔒 البوابة مغلقة! قف على المفاتيح الصفراء الثلاثة أولاً');
+          return;
+        }
+        pz.player.x = nx;
+        pz.player.y = ny;
+        Sound.step();
+
+        // Check switches
+        pz.switches.forEach(sw => {
+          if (!sw.lit && sw.x === nx && sw.y === ny) {
+            sw.lit = true;
+            Sound.switchOn();
+            if (pz.switches.every(s => s.lit)) {
+              pz.gateOpen = true;
+              showToast('🔓 فُتحت البوابة السحرية! اتجه نحو الجوهرة 💎');
+            }
+          }
+        });
+
+        // Check gem
+        if (cell === 4 && !pz.gemCollected) {
+          pz.gemCollected = true;
+          Sound.gem();
+          p.gems += 1;
+          renderLeaderboard();
+          updateTopBanner();
+          setTimeout(() => {
+            advancePlayerStage(`رائع يا ${p.name}! حللت اللغز وحصلت على جوهرة 💎`);
+          }, 350);
+        }
+      } else if (p.stage === 3 && state.maze) {
+        const mz = state.maze;
+        const nx = mz.player.x + dx;
+        const ny = mz.player.y + dy;
+        if (nx < 0 || ny < 0 || nx >= mz.cols || ny >= mz.rows) return;
+        if (mz.grid[ny][nx] === 1) return;
+
+        mz.player.x = nx;
+        mz.player.y = ny;
+        Sound.step();
+
+        // Collect gems
+        mz.gems.forEach(g => {
+          if (!g.collected && g.x === nx && g.y === ny) {
+            g.collected = true;
+            p.gems += 1;
+            Sound.gem();
+            renderLeaderboard();
+            updateTopBanner();
+            const remaining = mz.gems.filter(x => !x.collected).length;
+            showToast(remaining === 0 ? '✨ جمعت الجوهرتين! اتجه الآن لبوابة الخروج 🚪' : '💎 أحسنت! بقيت جوهرة واحدة في المتاهة');
+          }
+        });
+
+        // Check exit
+        if (nx === mz.exit.x && ny === mz.exit.y) {
+          const collectedCount = mz.gems.filter(g => g.collected).length;
+          if (collectedCount === 2) {
+            Sound.win();
+            advancePlayerStage(`بطل يا ${p.name}! هربت من الحراس وجمعت الجوهرتين 💎💎`);
+          } else {
+            showToast('اجمع الجوهرتين أولاً قبل الخروج من البوابة!');
+          }
+        }
+      }
+    }
+
+    // =========================================================
+    // 10. Game Loop & Canvas Rendering
+    // =========================================================
+    function resizeCanvas() {
+      const rect = canvasWrapper.getBoundingClientRect();
+      canvas.width = Math.max(300, Math.floor(rect.width));
+      canvas.height = Math.max(260, Math.floor(rect.height));
+    }
+
+    function updateMazeGuards(dt) {
+      if (state.screen !== 'playing' || state.teacherPaused) return;
+      const p = state.players[state.activePlayerIdx];
+      if (!p || p.stage !== 3 || !state.maze) return;
+
+      const mz = state.maze;
+      if (mz.invulnTimer > 0) mz.invulnTimer = Math.max(0, mz.invulnTimer - dt);
+
+      mz.guards.forEach(g => {
+        if (g.dirX !== 0) {
+          g.x += g.dirX * g.speed * dt;
+          if (g.x >= g.maxX) { g.x = g.maxX; g.dirX = -1; }
+          if (g.x <= g.minX) { g.x = g.minX; g.dirX = 1; }
+        } else {
+          g.y += g.dirY * g.speed * dt;
+          if (g.y >= g.maxY) { g.y = g.maxY; g.dirY = -1; }
+          if (g.y <= g.minY) { g.y = g.minY; g.dirY = 1; }
+        }
+
+        // Collision check with player
+        if (mz.invulnTimer <= 0) {
+          const dist = Math.hypot(g.x - mz.player.x, g.y - mz.player.y);
+          if (dist < 0.55) {
+            Sound.hit();
+            mz.hearts--;
+            mz.invulnTimer = 1.6;
+            mz.player.x = 1;
+            mz.player.y = 1;
+            updateTopBanner();
+            if (mz.hearts <= 0) {
+              showToast('👾 أمسك بك الحراس! تم نقلك للمرحلة التالية');
+              advancePlayerStage(`انتهت محاولات المتاهة لـ ${p.name}! لنكمل للسؤال النهائي.`);
+            } else {
+              showToast(`⚠️ احذر من الحراس! تبقى لك ${mz.hearts} قلوب`);
+            }
+          }
+        }
+      });
+    }
+
+    function drawGame() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Subtle background grid
+      ctx.fillStyle = '#070b19';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const p = state.players[state.activePlayerIdx];
+      if (!p) return;
+
+      if (p.stage === 1 && state.puzzle) {
+        drawGridStage(state.puzzle.cols, state.puzzle.rows, (tile, ox, oy) => {
+          const pz = state.puzzle;
+          for (let r = 0; r < pz.rows; r++) {
+            for (let c = 0; c < pz.cols; c++) {
+              const x = ox + c * tile;
+              const y = oy + r * tile;
+              const cell = pz.grid[r][c];
+              if (cell === 1) {
+                ctx.fillStyle = '#1e293b';
+                ctx.fillRect(x + 1, y + 1, tile - 2, tile - 2);
+                ctx.strokeStyle = '#334155';
+                ctx.strokeRect(x + 1, y + 1, tile - 2, tile - 2);
+              } else {
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(x + 1, y + 1, tile - 2, tile - 2);
+              }
+
+              if (cell === 3 && !pz.gateOpen) {
+                ctx.fillStyle = '#b45309';
+                ctx.fillRect(x + 3, y + 3, tile - 6, tile - 6);
+                drawEmoji('🔒', x + tile / 2, y + tile / 2, tile * 0.55);
+              }
+              if (cell === 4 && !pz.gemCollected) {
+                drawGemGlow(x + tile / 2, y + tile / 2, tile * 0.36, '#38bdf8');
+                drawEmoji('💎', x + tile / 2, y + tile / 2, tile * 0.62);
+              }
+            }
+          }
+
+          // Switches
+          pz.switches.forEach(sw => {
+            const x = ox + sw.x * tile;
+            const y = oy + sw.y * tile;
+            ctx.fillStyle = sw.lit ? 'rgba(16, 185, 129, 0.35)' : 'rgba(245, 158, 11, 0.25)';
+            ctx.beginPath();
+            ctx.arc(x + tile / 2, y + tile / 2, tile * 0.34, 0, Math.PI * 2);
+            ctx.fill();
+            drawEmoji(sw.lit ? '✅' : '🔑', x + tile / 2, y + tile / 2, tile * 0.5);
+          });
+
+          // Player
+          const px = ox + pz.player.x * tile + tile / 2;
+          const py = oy + pz.player.y * tile + tile / 2;
+          ctx.fillStyle = p.color;
+          ctx.beginPath();
+          ctx.arc(px, py, tile * 0.38, 0, Math.PI * 2);
+          ctx.fill();
+          drawEmoji(p.avatar, px, py, tile * 0.56);
+        });
+      } else if (p.stage === 3 && state.maze) {
+        drawGridStage(state.maze.cols, state.maze.rows, (tile, ox, oy) => {
+          const mz = state.maze;
+          for (let r = 0; r < mz.rows; r++) {
+            for (let c = 0; c < mz.cols; c++) {
+              const x = ox + c * tile;
+              const y = oy + r * tile;
+              if (mz.grid[r][c] === 1) {
+                ctx.fillStyle = '#312e81';
+                ctx.fillRect(x + 1, y + 1, tile - 2, tile - 2);
+              } else {
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(x + 1, y + 1, tile - 2, tile - 2);
+              }
+            }
+          }
+
+          // Exit portal
+          const ex = ox + mz.exit.x * tile + tile / 2;
+          const ey = oy + mz.exit.y * tile + tile / 2;
+          drawGemGlow(ex, ey, tile * 0.4, '#10b981');
+          drawEmoji('🚪', ex, ey, tile * 0.6);
+
+          // 2 Gems
+          mz.gems.forEach(g => {
+            if (!g.collected) {
+              const gx = ox + g.x * tile + tile / 2;
+              const gy = oy + g.y * tile + tile / 2;
+              drawGemGlow(gx, gy, tile * 0.36, '#f472b6');
+              drawEmoji('💎', gx, gy, tile * 0.6);
+            }
+          });
+
+          // Patrolling Guards / Monsters
+          mz.guards.forEach(g => {
+            const gx = ox + g.x * tile + tile / 2;
+            const gy = oy + g.y * tile + tile / 2;
+            drawGemGlow(gx, gy, tile * 0.34, '#ef4444');
+            drawEmoji('👾', gx, gy, tile * 0.6);
+          });
+
+          // Player (blink if invulnerable)
+          if (mz.invulnTimer <= 0 || Math.floor(mz.invulnTimer * 10) % 2 === 0) {
+            const px = ox + mz.player.x * tile + tile / 2;
+            const py = oy + mz.player.y * tile + tile / 2;
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(px, py, tile * 0.38, 0, Math.PI * 2);
+            ctx.fill();
+            drawEmoji(p.avatar, px, py, tile * 0.56);
+          }
+        });
+      }
+    }
+
+    function drawGridStage(cols, rows, callback) {
+      const pad = 16;
+      const tile = Math.floor(Math.min((canvas.width - pad * 2) / cols, (canvas.height - pad * 2) / rows));
+      const ox = Math.floor((canvas.width - cols * tile) / 2);
+      const oy = Math.floor((canvas.height - rows * tile) / 2);
+      callback(tile, ox, oy);
+    }
+
+    function drawEmoji(char, x, y, size) {
+      ctx.font = `${Math.floor(size)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(char, x, y + 1);
+    }
+
+    function drawGemGlow(x, y, radius, color) {
+      const grad = ctx.createRadialGradient(x, y, 2, x, y, radius);
+      grad.addColorStop(0, color);
+      grad.addColorStop(1, 'transparent');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function gameLoop(ts) {
+      const dt = Math.min(0.05, (ts - state.lastTime) / 1000 || 0.016);
+      state.lastTime = ts;
+      updateMazeGuards(dt);
+      drawGame();
+      state.animFrame = requestAnimationFrame(gameLoop);
+    }
+
+    // =========================================================
+    // 11. Teacher Modal & Helpers
+    // =========================================================
+    function renderQuestionBank() {
+      const list = document.getElementById('qBankList');
+      document.getElementById('qBankCount').textContent = state.questions.length;
+      list.innerHTML = '';
+      state.questions.forEach((item, idx) => {
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between gap-2 bg-slate-900/90 border border-slate-700 rounded-lg px-2.5 py-1.5';
+        row.innerHTML = `
+          <span class="text-slate-200 truncate">${idx + 1}. ${item.q} <span class="text-emerald-400">(${item.opts[item.ans]})</span></span>
+          <button data-qdel="${idx}" class="text-rose-400 hover:text-rose-300 font-bold px-1.5">حذف</button>
+        `;
+        row.querySelector('button').onclick = () => {
+          if (state.questions.length <= 1) {
+            showToast('يجب بقاء سؤال واحد على الأقل!');
+            return;
+          }
+          state.questions.splice(idx, 1);
+          renderQuestionBank();
+        };
+        list.appendChild(row);
+      });
+    }
+
+    let toastTimer = null;
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.add('hidden'), 2600);
+    }
+
+    // =========================================================
+    // 12. Event Listeners
+    // =========================================================
+    document.querySelectorAll('.pc-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.playerCount = Number(btn.dataset.count);
+        renderSetupInputs();
+      });
+    });
+
+    document.getElementById('btnStartTournament').addEventListener('click', () => startTournament(false));
+    document.getElementById('btnPlayAgain').addEventListener('click', () => startTournament(true));
+
+    document.getElementById('btnResetAll').addEventListener('click', () => {
+      state.screen = 'setup';
+      hideAllOverlays();
+      overlaySetup.classList.remove('hidden');
+      renderSetupInputs();
+    });
+
+    document.getElementById('btnToggleControl').addEventListener('click', () => {
+      state.teacherPaused = !state.teacherPaused;
+      const btn = document.getElementById('btnToggleControl');
+      const label = document.getElementById('controlModeLabel');
+      if (state.teacherPaused) {
+        btn.className = 'px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold bg-amber-600 hover:bg-amber-500 text-white transition flex items-center gap-1.5 shadow';
+        label.textContent = 'اللعبة متوقفة (اضغط لإعطاء الذراع)';
+      } else {
+        btn.className = 'px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition flex items-center gap-1.5 shadow';
+        label.textContent = 'الذراع مع الطالب (الأسهم مفعلة)';
+      }
+      updateTopBanner();
+    });
+
+    document.getElementById('btnMute').addEventListener('click', (e) => {
+      const m = Sound.toggleMute();
+      e.currentTarget.textContent = m ? '🔇' : '🔊';
+    });
+
+    document.getElementById('btnTransNext').addEventListener('click', () => {
+      const p = state.players[state.activePlayerIdx];
+      if (p && p.finished) {
+        const nextIdx = state.players.findIndex(pl => !pl.finished);
+        if (nextIdx !== -1) state.activePlayerIdx = nextIdx;
+      }
+      startActivePlayerStage();
+    });
+
+    document.getElementById('btnTeacherCorrect').addEventListener('click', () => handleQuestionAnswer(true));
+    document.getElementById('btnTeacherWrong').addEventListener('click', () => handleQuestionAnswer(false));
+
+    document.getElementById('btnGiveBonusGem').addEventListener('click', () => {
+      const p = state.players[state.activePlayerIdx];
+      if (!p) return;
+      p.gems += 1;
+      Sound.gem();
+      renderLeaderboard();
+      updateTopBanner();
+      showToast(`⭐ منح المعلم جوهرة مكافأة لـ ${p.name}!`);
+    });
+
+    document.getElementById('btnSkipStage').addEventListener('click', () => {
+      const p = state.players[state.activePlayerIdx];
+      if (!p || state.screen === 'setup') return;
+      advancePlayerStage(`تخطى المعلم المرحلة لـ ${p.name}`);
+    });
+
+    document.getElementById('btnNextPlayer').addEventListener('click', () => {
+      if (state.players.length <= 1 || state.screen === 'setup') return;
+      state.activePlayerIdx = (state.activePlayerIdx + 1) % state.players.length;
+      startActivePlayerStage();
+      showToast(`🎮 الذراع الآن مع ${state.players[state.activePlayerIdx].name}`);
+    });
+
+    // Teacher Modal
+    document.getElementById('btnOpenTeacherPanel').addEventListener('click', () => {
+      renderQuestionBank();
+      document.getElementById('teacherModal').classList.remove('hidden');
+    });
+    document.getElementById('btnCloseTeacherModal').addEventListener('click', () => {
+      document.getElementById('teacherModal').classList.add('hidden');
+    });
+    document.getElementById('btnAddCustomQ').addEventListener('click', () => {
+      const q = document.getElementById('newQText').value.trim();
+      const o0 = document.getElementById('newQOpt0').value.trim();
+      const o1 = document.getElementById('newQOpt1').value.trim();
+      const o2 = document.getElementById('newQOpt2').value.trim();
+      const o3 = document.getElementById('newQOpt3').value.trim();
+      if (!q || !o0 || !o1) {
+        showToast('اكتب السؤال والخيار الصحيح وخياراً ثانياً على الأقل');
+        return;
+      }
+      const opts = [o0, o1, o2 || 'لا شيء مما سبق', o3 || 'كل ما سبق'];
+      state.questions.unshift({ q, opts, ans: 0 });
+      state.qCursor = 0;
+      ['newQText', 'newQOpt0', 'newQOpt1', 'newQOpt2', 'newQOpt3'].forEach(id => document.getElementById(id).value = '');
+      renderQuestionBank();
+      const msg = document.getElementById('customQMsg');
+      msg.classList.remove('hidden');
+      setTimeout(() => msg.classList.add('hidden'), 2000);
+    });
+
+    // D-Pad buttons
+    document.querySelectorAll('.dpad-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const dir = btn.dataset.dir;
+        if (dir === 'up') movePlayer(0, -1);
+        if (dir === 'down') movePlayer(0, 1);
+        if (dir === 'left') movePlayer(-1, 0);
+        if (dir === 'right') movePlayer(1, 0);
+      });
+    });
+
+    // Keyboard Arrow Keys & WASD (Prevent page scroll on arrows)
+    window.addEventListener('keydown', (e) => {
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        if (state.screen === 'playing') e.preventDefault();
+      }
+      if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') movePlayer(0, -1);
+      if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') movePlayer(0, 1);
+      if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') movePlayer(-1, 0);
+      if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') movePlayer(1, 0);
+    });
+
+    window.addEventListener('resize', resizeCanvas);
+
+    window.onload = () => {
+      resizeCanvas();
+      renderSetupInputs();
+      if (state.animFrame) cancelAnimationFrame(state.animFrame);
+      state.animFrame = requestAnimationFrame(gameLoop);
+    };
+  </script>
+</body>
+</html>
